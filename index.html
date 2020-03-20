@@ -1,0 +1,914 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>U2F</title>
+    <!-- Meta informations -->
+    <meta name="author" content="">
+    <meta name="description" content="">
+
+    <!-- Devices compatibilties -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <!-- Style -->
+    <link rel="stylesheet" href="reveal.js/css/reset.css">
+    <link rel="stylesheet" href="reveal.js/css/reveal.css">
+    <link rel="stylesheet" href="reveal.js/css/theme/black.css">
+    <link href="static/logo.svg" rel="icon" type="image/x-icon">
+
+
+    <!-- Theme used for syntax highlighting of code -->
+    <link rel="stylesheet" href="reveal.js/lib/css/monokai.css">
+
+    <!-- Printing and PDF exports -->
+    <script>
+        var link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = window.location.search.match(/print-pdf/gi) ? 'css/print/pdf.css' : 'css/print/paper.css';
+        document.getElementsByTagName('head')[0].appendChild(link);
+    </script>
+
+    <!-- IE -->
+    <!--[if lt IE 9]>
+        <script src="lib/js/html5shiv.js"></script>
+    <![endif]-->
+
+    <style>
+        body {
+            background-image: url('../static/background.svg');
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            background-size: 100% 100%;
+        }
+        
+        #logo {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            border: 0;
+            width: 8%;
+        }
+        
+        #description {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            border: 0;
+            color: gray;
+        }
+        
+        #author {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            border: 0;
+            color: gray;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Any section element inside of this container is displayed as a slide -->
+            <section>
+                <h1>U2F</h1>
+                <h3>Overview of the protocol</h3>
+                <p>Through the implementation of a virtual device</p>
+                <p>
+                    <small>Presented by César <a href="https://github.com/MattGorko">`Mattgorko`</a> Belley</small>
+                </p>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    `Overview`
+                    ```markdown
+                    1 - FIDO Alliance:
+                      * What is it ?
+                      * What they do ?
+                      * The standards
+                    ```
+                    ```markdown
+                    2 - U2F Overview
+                      * Introduction
+                      * ECDSA
+                      * Registration
+                      * Authentification
+                      * Problems and Solutions
+                      * U2F everywhere
+                      * Inexpensive devices
+                    ```
+                    ```markdown
+                    2 - U2F Implementation
+                      * Implementation layers
+                      * USB implementations
+                      * Message formats
+                    ```
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    # Part 1
+
+                    ![Image](static/FIDO_ALLIANCE.png) <!-- .element: style="max-height: 300px;"-->
+                    
+                    `Fido Alliance`
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    Rapid overview
+                    
+                    ```markdown
+                    What is FIDO:
+                    * FIDO: Fast IDentity Online
+                    ```
+                    ```markdown
+                    Why FIDO exists:
+                    * Authentification devices: lack of interoperability
+                    * Difficulty to remember credentials
+                    ```
+                    ```markdown
+                    What FIDO Alliance is doing:
+                    * Make open authentication standards to reduce over-reliance
+                      on passwords
+                    ```
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    `An Alliance`
+
+                    ```markdown
+                    An Open industry association
+
+                    Founded in part by:
+                    - Lenovo, Paypal, Infineonn, ...
+
+                    Counts various members (>260):
+                    - ARM, The GAFAs, ...
+                    ```
+                </script>
+            </section>
+            
+            <section data-markdown>
+                <script type="text/template">
+                    `An alliances of protocols`
+
+                    ![Image](static/FIDO_U2F.png) <!-- .element: style="max-height: 256px;"-->
+                    ![Image](static/FIDO_UAF.png) <!-- .element: style="max-height: 256px;"-->
+
+                    ```markdown
+                    Three protocols:
+                    * U2F:  `Universal Second Factor`
+                    * UAF:  `Universal Authentification Framework`
+                    * CTAP: `Client Authenticator Protocols`
+                    ```
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    # Part 2
+
+                    ![Image](static/FIDO_U2F.png) <!-- .element: style="max-height: 300px;"-->
+                    
+                    `Fido U2F`
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    `How it work`
+
+                    Overview
+                    ```markdown
+                    What is U2F adding:
+                    - A Second Authentification Factor
+                    ```
+                    ```markdown
+                    Credentials are no longer enough, the user must present
+                    an U2F compatible device for two-factor authentication
+                    ```
+                    ```markdown
+                    Allow:
+                    - Less complicated passwords (4 digits PIN)
+                    - Reduce the over-reliance on passwords
+                    - Greater security
+                    ```
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    `How it work`
+
+                    ECDSA
+                    ```markdown
+                    The entire U2F protocol is based on ECDSA:
+                    * Signature generation (Private key)
+                    * Signature verification (Public key)
+                    ```
+
+                    ```c
+                    #include <openssl/ecdsa.h>
+                    
+                    int ECDSA_sign(int type,
+                                    const unsigned char *dgst, int dgstlen,
+                                    unsigned char *sig, unsigned int *siglen,
+                                    EC_KEY *privkey);
+                    
+                    int ECDSA_verify(int type,
+                                    const unsigned char *dgst, int dgstlen,
+                                    const unsigned char *sig, int siglen,
+                                    EC_KEY *pubkey);
+                    ```
+                    ```markdown
+                    Challenge signature and verification as authentification
+                    ```
+                </script>
+            </section>
+            <section data-markdown>
+                <script type="text/template">
+                    `How it work`
+
+                    Operations
+                    ```markdown
+                    Two operations:
+                    * Registration
+                    * Authentification
+                    ```
+
+                    ```markdown
+                    Registration:
+                    - Key generation
+                    ```
+                    ```markdown
+                    Authentification:
+                    - Challenge signature and verification
+                    ```
+                </script>
+            </section>
+            <section data-markdown>
+                <script type="text/template">
+                    `How it work`
+
+                    Registration
+                    ```markdown
+                    1) Server requests registration
+                    
+                    2) U2F Device: 
+                            * Generates an asymmetric key pair
+                            * Stores the private key
+                            * Sends back the public key
+                    
+                    3) Server stores the public key
+                    ```
+                </script>
+            </section>
+            <section data-markdown>
+                <script type="text/template">
+                    `How it work`
+
+                    Authentification
+                    ```markdown
+                    1) Server:
+                            * Generates a nonce used as challenge
+                            * Requests authentification, challenge as argument
+                    
+                    2) U2F Device:
+                            * Retrieves the stored private key
+                            * Signs the challenge
+                            * Sends back the signature
+                    
+                    3) Server verifies the signature
+                    ```
+                </script>
+            </section>
+            <section data-markdown>
+                <script type="text/template">
+                    `How it work`
+
+                    Problems ?
+                    ```markdown
+                    One key for one registration:
+                    * Which key used to sign ?
+
+                    Because:
+                    * Privacy
+                    * Security
+                    ```
+                </script>
+            </section>
+            <section data-markdown>
+                <script type="text/template">
+                    `How it work`
+
+                    Solution
+                    ```markdown
+                    Registration:
+                    - Key generation
+                    - **Id generation**, unique, associated with the key
+                    ```
+                    ```markdown
+                    The id is know as a **Key Handle**
+                    ```
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    `How it work`
+
+                    Registration
+                    ```markdown
+                    1) Server requests registration
+                    
+                    2) U2F Device: 
+                            * Generates an asymmetric key pair
+                            * **Generates a key handle**
+                            * Stores the private key
+                            * Sends back the public key && its **key handle**
+                    
+                    3) Server stores the public key and the **key handle**
+                    ```
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    `How it work`
+
+                    Authentification
+                    ```markdown
+                    1) Server:
+                            * Generates a nonce used as challenge
+                            * Requests authentification,
+                       challenge and **key handle** as arguments
+                    
+                    2) U2F Device:
+                            * Retrieves the stored private key **(key handle)**
+                            * Signs the challenge
+                            * Sends back the signature
+                    
+                    3) Server verifies the signature
+                    ```
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    `How it work`
+
+                    Problems ?
+                    ```markdown
+                    MITM attack:
+                    * Usurpation of the identity through the key handle ?
+                    ```
+                    ```markdown
+                    Server <-Key Handle-> MITM <-Key Handle-|/> Client
+                    
+                    Or just:
+                    Server A <-Register-> Client (Create Key Handle A)
+                    Server B <-Key Handle A> Client (Respond with a signature)
+
+                    ```
+                    ```markdown
+                    We have to associate each key to a specific origin to avoid
+                    that
+                    ```
+                </script>
+            </section>
+            <section data-markdown>
+                <script type="text/template">
+                    `How it work`
+
+                    Solution
+                    ```markdown
+                    Solutions:
+                    - Trick on the Key Handle
+                    - Add intelligence to the U2F client
+                    ```
+                    ```markdown
+                    Respectively
+                    - Add the hash of the origin to the keyhandle
+                    - Forward the origin of the service to the U2F device
+                    ```
+                    ```markdown
+                    Let's say an origin is:
+                    * (protocol + hostname + port): safe enough
+                    ```
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    `How it work`
+
+                    Registration
+                    ```markdown
+                    1) Server requests registration
+                    ```
+                    ```markdown
+                    **2) Client:**
+                            * checks origin
+                            * Forwards it to the U2F device
+
+                    3) U2F Device: 
+                            * Generates an asymmetric key pair
+                            * Generates a key handle **Based on the origin**
+                            * Stores the private key
+                            * Sends back the public key && its key handle
+                    ```
+                    ```markdown
+                    4) Server stores the public key and the key handle
+                    ```
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    `How it work`
+
+                    Authentification
+                    ```markdown
+                    1) Server:
+                            * Generates a nonce used as challenge
+                            * Requests authentification,
+                       challenge and key handle as arguments
+                    ```
+                    ```markdown
+                    **2) Client:**
+                            * Checks origin
+                            * Forwards it to the U2F device
+
+                    2) U2F Device:
+                            * **Check if the key handle matchs the origin**
+                            * Retrieves the stored private key (key handle)
+                            * Signs the challenge
+                            * Sends back the signature
+                    ```
+                    ```markdown
+                    4) Server verifies the signature
+                    ```
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    `Attestation`
+
+                    ```markdown
+                    What if a server wants to trust only certain U2F devices
+                    ```
+                    ```markdown
+                    Attestation mechanism based on:
+                    * X509 certificate
+                    * chain of trust
+                    ```
+                    ```markdown
+                    Each U2F device contains an X509 certificate used to sign
+                    the registration response
+                    ```
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    `How it work`
+
+                    Registration
+                    ```markdown
+                    1) Server requests registration
+                    ```
+                    ```markdown
+                    2) Client:
+                            * Checks origin
+                            * Forwards it to the U2F device
+
+                    3) U2F Device: 
+                            * Generates an asymmetric key pair
+                            * Generates a key handle **Based on the origin
+                            * Stores the private key
+                            * Sends back the public key && its key handle
+                       && **the X509 certificate** 
+                            * **All the response signed with the X509 privkey**
+                    ```
+                    ```markdown
+                    4) Server:
+                            * Verifies the signature match the X509
+                            * On private policies, abort or not
+                            * Stores the public key and the key handle
+                    ```
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    `Extreme security`
+
+                    ```markdown
+                    What if the security key is compromise:
+                    * A private key leaked
+                    ```
+
+                    ```markdown
+                    We implement a counter:
+                    * Each key is associated with a counter which is incremented
+                      on each signature
+                    * The counter is sent to the server on each authentification
+                    * The server checks weird situations and alerts the client
+                    ```
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    `How it work`
+
+                    Registration
+                    ```markdown
+                    1) Server requests registration
+                    ```
+                    ```markdown
+                    2) Client:
+                            * Checks origin
+                            * Forwards it to the U2F device
+
+                    3) U2F Device: 
+                            * Generates an asymmetric key pair
+                            * Generates a key handle Based on the origin
+                            * Stores the private key and a **counter set to 0**
+                            * Sends back the public key && its key handle
+                       && the X509 certificate
+                            * All the response signed with the X509 privkey
+                    ```
+                    ```markdown
+                    4) Server:
+                            * Verifies the signature match the X509
+                            * On private policies, abort or not
+                            * Stores the public key and the key handle
+                    ```
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    `How it work`
+
+                    Authentification
+                    ```markdown
+                    1) Server:
+                            * Generates a nonce used as challenge
+                            * Requests authentification,
+                       challenge and key handle as arguments
+                    ```
+                    ```markdown
+                    2) Client:
+                            * Checks origin
+                            * Forwards it to the U2F device
+
+                    2) U2F Device:
+                            * Checks if the key handle matchs the origin
+                            * Retrieves the stored private key (key handle)
+                            * Signs the challenge and **increments the counter**
+                            * Sends back the signature and the counter
+                    ```
+                    ```markdown
+                    4) Server:
+                            * **Checks the counter**
+                            * Verifies the signature
+                    ```
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    `Registration Summary`
+
+                    ![Image](static/registration.png) <!-- .element: style="max-height: 600px;"-->
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    `Authentification Summary `
+                    ![Image](static/authentification.png) <!-- .element: style="max-height: 600px;"-->
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    `U2F EVERYWHERE`
+
+                    ```markdown
+                    * Security
+                    * Shorter passwords
+                    * Easy to use
+                    * Differents ways of utilisations:
+                        * NFC
+                        * Bluetooth
+                        * USB
+                        * Soft
+                    * Simple to implement
+                    * Works out of the box
+                    * Inexpensive device:
+                        * Stateless
+                        * No memory needed
+                    ```
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    `U2F Inexpensive device`
+
+                    ```markdown
+                    We will mega trick on the key handle
+                    ```
+                    ```markdown
+                    Now the key handle will contain:
+                    * The private key
+                    * The hash of the origin
+                    And wil be encrypt using AES
+                    ```
+                    ```markdown
+                    Avantages:
+                    * Stateless (modulo counter)
+                    * No secure memory needed
+                    ```
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    # Part 3
+
+                    ![Image](static/u2f-key.gif) <!-- .element: style="max-height: 300px;"-->
+
+                    
+                    `Let's Implement`
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    `Layers`
+                    ```markdown
+                    Two layers:
+                    * Top: raw message, transport agnostic
+                    * Down: communication, transport specific
+                    ```
+                    ```markdown
+                    Top:
+                    * APDU format
+                    Down:
+                    * HID for usb transport
+                    ```
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    `USB Implementation`
+                    ```markdown
+                    Five nesting levels:
+                    * HID event
+                    * Packet
+                    * Message
+                    * APDU
+                    * Transaction
+                    ```
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    `U2FHID Packet`
+                    ```c
+                    #define PACKET_SIZE 64
+                    ```
+                    ```c
+                    // U2FHID packet: message initiation
+                    struct packet_init
+                    {
+                        uint32_t cid;   // Channel id
+                        uint8_t cmd;    // (bit 7 always set)
+                        uint16_t bcnt;  // Payload lebgth
+                        uint8_t data[PACKET_INIT_DATA_SIZE];
+                    } __packed;
+                    ```
+                    ```c
+                    // U2FHID packet: message continuation
+                    struct packet_cont
+                    {
+                        uint32_t cid;   // Channel id
+                        uint8_t seq;    // (bit 7 always unset)
+                        uint8_t data[PACKET_CONT_DATA_SIZE];
+                    } __packed;
+                    ```
+                </script>
+            </section>
+
+            <section data-markdown>
+                <script type="text/template">
+                    `Message`
+                    ```c
+                    // Message fragment
+                    struct message_part
+                    {
+                        struct packet_cont *packet;
+                        struct message_part *next;
+                    };
+                    ```
+                    ```c
+                    // Message
+                    struct message
+                    {
+                        struct packet_init *init_packet;
+                        struct
+                        {
+                            struct message_part *begin;
+                            struct message_part *end;
+                        } cont;
+                    };
+                    ```
+                </script>
+            </section>
+        </div>
+    </div>
+
+    ```markdown
+    2 - U2F Implementation
+      * UHID
+      * U2FHID
+      * Registration
+      * Authentification
+
+    <!-- Reveal -->
+    <script src="reveal.js/js/reveal.js"></script>
+
+    <!-- Logo -->
+    <img id="logo" src="static/logo.svg">
+
+    <!-- Description -->
+    <small id="description">Overview of the U2F protocol</small>
+
+    <!-- Author -->
+    <small id="author">César `Mattgorko` Belley</small>
+
+    <!-- Config -->
+    <script>
+        // More info about config & dependencies:
+        // - https://github.com/hakimel/reveal.js#configuration
+        // - https://github.com/hakimel/reveal.js#dependencies
+        Reveal.initialize({
+            // Display presentation control arrows
+            controls: false,
+            // Display a presentation progress bar
+            progress: true,
+            // Display the page number of the current slide
+            slideNumber: true,
+            // Add the current slide number to the URL hash so that reloading the
+            // page/copying the URL will return you to the same slide
+            hash: true,
+            // Push each slide change to the browser history. Implies `hash: true`
+            history: true,
+            // Enable keyboard shortcuts for navigation
+            keyboard: true,
+            // Enable the slide overview mode
+            overview: true,
+            // Vertical centering of slides
+            center: true,
+            // Enables touch navigation on devices with touch input
+            touch: true,
+            // Loop the presentation
+            loop: false,
+            // Change the presentation direction to be RTL
+            rtl: false,
+            // See https://github.com/hakimel/reveal.js/#navigation-mode
+            navigationMode: 'default',
+            // Randomizes the order of slides each time the presentation loads
+            shuffle: false,
+            // Turns fragments on and off globally
+            fragments: true,
+            // Flags whether to include the current fragment in the URL,
+            // so that reloading brings you to the same fragment position
+            embedded: false,
+            // Flags if we should show a help overlay when the questionmark
+            // key is pressed
+            help: false,
+            // Flags if speaker notes should be visible to all viewers
+            showNotes: false,
+            // Global override for autoplaying embedded media (video/audio/iframe)
+            // - null: Media will only autoplay if data-autoplay is present
+            // - true: All media will autoplay, regardless of individual setting
+            // - false: No media will autoplay, regardless of individual setting
+            autoPlayMedia: null,
+            // Global override for preloading lazy-loaded iframes
+            // - null: Iframes with data-src AND data-preload will be loaded when within
+            //   the viewDistance, iframes with only data-src will be loaded when visible
+            // - true: All iframes with data-src will be loaded when within the viewDistance
+            // - false: All iframes with data-src will be loaded only when visible
+            preloadIframes: null,
+            // Number of milliseconds between automatically proceeding to the
+            // next slide, disabled when set to 0, this value can be overwritten
+            // by using a data-autoslide attribute on your slides
+            autoSlide: 0,
+            // Stop auto-sliding after user input
+            autoSlideStoppable: true,
+            // Use this method for navigation when auto-sliding
+            autoSlideMethod: Reveal.navigateNext,
+            // Specify the average time in seconds that you think you will spend
+            // presenting each slide. This is used to show a pacing timer in the
+            // speaker view
+            defaultTiming: 30,
+            // Specify the total time in seconds that is available to
+            // present.  If this is set to a nonzero value, the pacing
+            // timer will work out the time available for each slide,
+            // instead of using the defaultTiming value
+            totalTime: 0,
+            // Specify the minimum amount of time you want to allot to
+            // each slide, if using the totalTime calculation method.  If
+            // the automated time allocation causes slide pacing to fall
+            // below this threshold, then you will see an alert in the
+            // speaker notes window
+            minimumTimePerSlide: 0,
+            // Enable slide navigation via mouse wheel
+            mouseWheel: false,
+            // Hide cursor if inactive
+            hideInactiveCursor: true,
+            // Time before the cursor is hidden (in ms)
+            hideCursorTime: 4000,
+            // Hides the address bar on mobile devices
+            hideAddressBar: true,
+            // Opens links in an iframe preview overlay
+            // Add `data-preview-link` and `data-preview-link="false"` to customise each link
+            // individually
+            previewLinks: false,
+            // Transition style
+            transition: 'slide', // none/fade/slide/convex/concave/zoom
+            // Transition speed
+            transitionSpeed: 'default', // default/fast/slow
+            // Transition style for full page slide backgrounds
+            backgroundTransition: 'fade', // none/fade/slide/convex/concave/zoom
+            // Number of slides away from the current that are visible
+            viewDistance: 3,
+            // Number of slides away from the current that are visible on mobile
+            // devices. It is advisable to set this to a lower number than
+            // viewDistance in order to save resources.
+            mobileViewDistance: 2,
+            // Parallax background image
+            parallaxBackgroundImage: "",
+            // Parallax background size
+            parallaxBackgroundSize: 10,
+            // Number of pixels to move the parallax background per slide
+            // - Calculated automatically unless specified
+            // - Set to 0 to disable movement along an axis
+            parallaxBackgroundHorizontal: 0,
+            parallaxBackgroundVertical: 0,
+            // The display mode that will be used to show slides
+            display: 'block',
+            dependencies: [
+                // Interpret Markdown in <section> elements
+                {
+                    src: 'reveal.js/plugin/markdown/marked.js'
+                }, {
+                    src: 'reveal.js/plugin/markdown/markdown.js'
+                },
+                // Syntax highlight for <code> elements 
+                {
+                    src: 'reveal.js/plugin/highlight/highlight.js',
+                    async: true
+                },
+                // Speaker notes
+                {
+                    src: 'reveal.js/plugin/notes/notes.js',
+                    async: true
+                },
+                // Zoom in and out with Alt+click
+                {
+                    src: 'reveal.js/plugin/zoom-js/zoom.js',
+                    async: true
+                },
+                // MathJax
+                {
+                    src: 'reveal.js/plugin/math/math.js',
+                    async: true
+                }
+            ]
+        });
+    </script>
+</body>
+
+</html>
